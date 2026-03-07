@@ -7,25 +7,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useEmergencyContacts, useLogAlert } from "@/hooks/useQueries";
+import { useLogAlert } from "@/hooks/useQueries";
 import { playAlarm, stopAlarm } from "@/utils/alarm";
+import { getLocalContacts } from "@/utils/localContacts";
 import {
   Activity,
   AlertCircle,
   AlertTriangle,
-  Building2,
   CheckCircle2,
   Loader2,
   MapPin,
   MessageCircle,
   Mic,
   Phone,
-  Share2,
-  Shield,
   Volume2,
   X,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import type { EmergencyContact } from "../backend.d";
 
 interface HomeScreenProps {
   shakeEnabled: boolean;
@@ -36,54 +35,32 @@ interface HomeScreenProps {
 
 type SOSStatus = "idle" | "loading" | "success" | "error";
 
-const NEARBY_PLACES = [
+const HELPLINES = [
   {
     type: "police",
-    name: "Central Police Station",
-    address: "14 Precinct Road, Downtown",
-    distance: "0.3 km",
-    phone: "100",
+    name: "Police Helpline",
+    description: "Emergency police assistance",
+    phone: "112",
+    color: "oklch(0.32 0.18 280)",
+    bg: "oklch(0.32 0.18 280 / 0.1)",
   },
   {
-    type: "police",
-    name: "North District Police Post",
-    address: "88 Safety Avenue, North Ward",
-    distance: "0.8 km",
-    phone: "100",
+    type: "fire",
+    name: "Fire Emergency",
+    description: "Fire brigade & rescue services",
+    phone: "101",
+    color: "oklch(0.52 0.24 22)",
+    bg: "oklch(0.52 0.24 22 / 0.1)",
   },
   {
-    type: "police",
-    name: "Eastside Police Outpost",
-    address: "221 Vigilance Street, East",
-    distance: "1.4 km",
-    phone: "100",
-  },
-  {
-    type: "hospital",
-    name: "City General Hospital",
-    address: "5 Healthcare Blvd, Midtown",
-    distance: "0.6 km",
+    type: "ambulance",
+    name: "Ambulance",
+    description: "Medical emergency & ambulance",
     phone: "108",
-  },
-  {
-    type: "hospital",
-    name: "St. Mary Medical Centre",
-    address: "77 Wellness Road, South",
-    distance: "1.1 km",
-    phone: "108",
+    color: "oklch(0.38 0.2 145)",
+    bg: "oklch(0.38 0.2 145 / 0.1)",
   },
 ];
-
-// Open SMS links for all contacts sequentially with a small delay
-function sendSMSToContacts(contacts: { phone: string }[], message: string) {
-  contacts.forEach((contact, i) => {
-    const encoded = encodeURIComponent(message);
-    const smsUrl = `sms:${contact.phone}?body=${encoded}`;
-    setTimeout(() => {
-      window.open(smsUrl, "_blank");
-    }, i * 600);
-  });
-}
 
 export function HomeScreen({
   shakeEnabled,
@@ -92,20 +69,22 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const [sosStatus, setSOSStatus] = useState<SOSStatus>("idle");
   const [alertOpen, setAlertOpen] = useState(false);
-  const [alertMessage, setAlertMessage] = useState("");
+  const [alertLocationLine, setAlertLocationLine] = useState("");
   const [emergencyMessage, setEmergencyMessage] = useState("");
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(30);
   const [gpsActive] = useState(true);
-  const [smsSentCount, setSmsSentCount] = useState(0);
+  const [activeContacts, setActiveContacts] = useState<EmergencyContact[]>([]);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logAlert = useLogAlert();
-  const { data: contacts = [] } = useEmergencyContacts();
 
   const triggerSOS = useCallback(async () => {
     if (sosStatus === "loading") return;
     setSOSStatus("loading");
 
     try {
+      // Read contacts fresh from localStorage at trigger time
+      const contacts = getLocalContacts();
+
       // Get GPS location
       const position = await new Promise<GeolocationPosition>(
         (resolve, reject) => {
@@ -114,7 +93,7 @@ export function HomeScreen({
             return;
           }
           navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 5000,
+            timeout: 8000,
             maximumAge: 0,
           });
         },
@@ -124,40 +103,39 @@ export function HomeScreen({
       const lon = position?.coords.longitude ?? 0;
 
       // Play alarm
-      playAlarm(10000);
+      playAlarm(30000);
 
       // Log to backend (non-blocking)
       logAlert.mutate({ latitude: lat, longitude: lon });
 
       const hasRealLocation = lat !== 0 || lon !== 0;
-      const link = hasRealLocation
+      const mapsLink = hasRealLocation
         ? `https://maps.google.com/?q=${lat},${lon}`
-        : "https://maps.google.com (location unavailable)";
-      const msg = `🚨 EMERGENCY ALERT! I am in danger. Please help me immediately!\nMy current location: ${link}`;
-      const displayMsg = hasRealLocation
-        ? `🚨 ALERT SENT!\n\n"I am in danger. Please help!\nMy location: ${link}"`
-        : `🚨 ALERT SENT!\n\n"I am in danger. Please help!\n(Location unavailable — GPS off)"`;
+        : null;
+
+      const msg = mapsLink
+        ? `🚨 EMERGENCY ALERT! I am in danger. Please help me immediately!\nMy current location: ${mapsLink}`
+        : "🚨 EMERGENCY ALERT! I am in danger. Please help me immediately!\n(Location unavailable — please call me)";
+
+      const locationLine = mapsLink
+        ? mapsLink
+        : "(Location unavailable — GPS off)";
 
       setEmergencyMessage(msg);
-      setAlertMessage(displayMsg);
+      setAlertLocationLine(locationLine);
+      setActiveContacts(contacts);
       setSOSStatus("success");
       setAlertOpen(true);
 
-      // AUTO-SEND SMS to all contacts immediately
+      // Immediately open SMS for the first contact (no extra tap needed)
       if (contacts.length > 0) {
-        setSmsSentCount(contacts.length);
-        sendSMSToContacts(contacts, msg);
+        const firstPhone = contacts[0].phone.replace(/\s/g, "");
+        const encodedMsg = encodeURIComponent(msg);
+        window.location.href = `sms:${firstPhone}?body=${encodedMsg}`;
       }
 
-      // Also try Web Share API as fallback / additional channel
-      if (navigator.share) {
-        navigator
-          .share({ title: "Emergency SOS Alert", text: msg })
-          .catch(() => {});
-      }
-
-      // Countdown to auto-dismiss
-      let count = 5;
+      // Countdown to auto-dismiss (30 seconds gives time to tap contacts)
+      let count = 30;
       setCountdown(count);
       if (countdownRef.current) clearInterval(countdownRef.current);
       countdownRef.current = setInterval(() => {
@@ -167,23 +145,24 @@ export function HomeScreen({
           if (countdownRef.current) clearInterval(countdownRef.current);
           setAlertOpen(false);
           setSOSStatus("idle");
-          setSmsSentCount(0);
         }
       }, 1000);
     } catch {
       setSOSStatus("error");
       setTimeout(() => setSOSStatus("idle"), 2000);
     }
-  }, [sosStatus, logAlert, contacts]);
+  }, [sosStatus, logAlert]);
 
   const dismissAlert = () => {
     stopAlarm();
     if (countdownRef.current) clearInterval(countdownRef.current);
     setAlertOpen(false);
     setSOSStatus("idle");
-    setSmsSentCount(0);
+    setActiveContacts([]);
   };
 
+  // Read contacts for the idle-state label (from localStorage directly)
+  const contactCount = getLocalContacts().length;
   const isActive = sosStatus === "success";
 
   return (
@@ -283,9 +262,9 @@ export function HomeScreen({
                   className="text-xs font-semibold tracking-widest uppercase"
                   style={{ color: "oklch(1 0 0 / 0.75)" }}
                 >
-                  {contacts.length > 0
-                    ? `Alerts ${contacts.length} contact${contacts.length > 1 ? "s" : ""}`
-                    : "Press & Hold"}
+                  {contactCount > 0
+                    ? `Alerts ${contactCount} contact${contactCount > 1 ? "s" : ""}`
+                    : "Tap for Help"}
                 </span>
               </div>
             )}
@@ -300,7 +279,7 @@ export function HomeScreen({
             style={{ color: "oklch(0.52 0.24 22)" }}
           >
             <Loader2 size={14} className="animate-spin" />
-            Getting your location & sending alert…
+            Getting your location…
           </div>
         )}
         {sosStatus === "success" && (
@@ -310,9 +289,7 @@ export function HomeScreen({
             style={{ color: "oklch(0.38 0.2 145)" }}
           >
             <CheckCircle2 size={14} />
-            {smsSentCount > 0
-              ? `Alert sent to ${smsSentCount} contact${smsSentCount > 1 ? "s" : ""}! Alarm active.`
-              : "Alert sent! Alarm is active."}
+            Location ready — tap contacts below to send!
           </div>
         )}
         {sosStatus === "error" && (
@@ -322,7 +299,7 @@ export function HomeScreen({
             style={{ color: "oklch(0.52 0.24 22)" }}
           >
             <AlertCircle size={14} />
-            Error sending. Try again.
+            Error. Try again.
           </div>
         )}
         {sosStatus === "idle" && (
@@ -330,8 +307,8 @@ export function HomeScreen({
             className="text-xs text-center"
             style={{ color: "oklch(0.52 0.04 260)" }}
           >
-            {contacts.length > 0
-              ? `Pressing SOS will alert ${contacts.length} contact${contacts.length > 1 ? "s" : ""} via SMS`
+            {contactCount > 0
+              ? `Pressing SOS will show send options for ${contactCount} contact${contactCount > 1 ? "s" : ""}`
               : "Add contacts in the Contacts tab to send alerts"}
           </p>
         )}
@@ -384,86 +361,70 @@ export function HomeScreen({
         </div>
       </div>
 
-      {/* Nearby Help */}
+      {/* Emergency Helplines */}
       <div className="flex-1 px-4 pb-4">
         <div className="flex items-center gap-2 mb-3">
-          <MapPin size={16} style={{ color: "oklch(0.52 0.24 22)" }} />
+          <Phone size={16} style={{ color: "oklch(0.52 0.24 22)" }} />
           <h2
             className="text-sm font-bold tracking-wide uppercase"
             style={{ color: "oklch(0.32 0.18 280)" }}
           >
-            Nearby Help
+            Emergency Helplines
           </h2>
         </div>
 
         <div className="space-y-2">
-          {NEARBY_PLACES.map((place) => (
-            <div
-              key={place.name}
-              className="rounded-xl px-4 py-3 flex items-center gap-3 transition-all"
+          {HELPLINES.map((helpline, idx) => (
+            <a
+              key={helpline.phone}
+              href={`tel:${helpline.phone}`}
+              data-ocid={`helpline.call_button.${idx + 1}`}
+              className="rounded-xl px-4 py-4 flex items-center gap-4 transition-all active:scale-[0.98]"
               style={{
                 background: "oklch(1 0 0)",
-                border: "1px solid oklch(0.9 0.02 270)",
+                border: `1px solid ${helpline.color.replace(")", " / 0.2)")}`,
                 boxShadow: "0 1px 4px oklch(0.12 0.02 260 / 0.06)",
+                display: "flex",
               }}
             >
               <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{
-                  background:
-                    place.type === "police"
-                      ? "oklch(0.32 0.18 280 / 0.12)"
-                      : "oklch(0.52 0.24 22 / 0.1)",
-                }}
+                className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: helpline.bg }}
               >
-                {place.type === "police" ? (
-                  <Shield
-                    size={18}
-                    style={{
-                      color: "oklch(0.32 0.18 280)",
-                    }}
-                  />
-                ) : (
-                  <Building2
-                    size={18}
-                    style={{ color: "oklch(0.42 0.2 22)" }}
-                  />
-                )}
+                <Phone size={22} style={{ color: helpline.color }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p
-                  className="text-sm font-semibold truncate"
+                  className="text-base font-bold"
                   style={{ color: "oklch(0.18 0.03 260)" }}
                 >
-                  {place.name}
+                  {helpline.name}
                 </p>
                 <p
-                  className="text-xs truncate"
+                  className="text-xs"
                   style={{ color: "oklch(0.52 0.04 260)" }}
                 >
-                  {place.address}
+                  {helpline.description}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1 flex-shrink-0">
                 <span
-                  className="text-xs font-bold"
-                  style={{ color: "oklch(0.32 0.18 280)" }}
+                  className="text-2xl font-black tracking-tight"
+                  style={{ color: helpline.color }}
                 >
-                  {place.distance}
+                  {helpline.phone}
                 </span>
-                <a
-                  href={`tel:${place.phone}`}
-                  className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
                   style={{
-                    background: "oklch(0.62 0.19 145 / 0.12)",
-                    color: "oklch(0.35 0.15 145)",
+                    background: helpline.bg,
+                    color: helpline.color,
                   }}
                 >
-                  <Phone size={10} />
-                  {place.phone}
-                </a>
+                  Tap to Call
+                </span>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </div>
@@ -504,128 +465,171 @@ export function HomeScreen({
               <AlertCircle size={32} color="white" />
             </div>
             <DialogTitle className="text-2xl font-black text-white tracking-wide">
-              ALERT SENT!
+              SOS ACTIVATED!
             </DialogTitle>
-            <p className="text-sm mt-1" style={{ color: "oklch(1 0 0 / 0.8)" }}>
-              {smsSentCount > 0
-                ? `SMS opened for ${smsSentCount} contact${smsSentCount > 1 ? "s" : ""}`
-                : "Tap contacts below to notify them"}
+            <p className="text-sm mt-1" style={{ color: "oklch(1 0 0 / 0.9)" }}>
+              {activeContacts.length > 0
+                ? "SMS opened for your first contact. Tap below for others:"
+                : "Location captured — add contacts to send alerts"}
             </p>
           </div>
 
           {/* Content */}
-          <div className="px-6 py-4">
+          <div className="px-5 py-4">
             <DialogHeader>
-              {/* Message box */}
+              {/* Location box */}
               <div
-                className="rounded-xl p-4 font-mono text-sm whitespace-pre-line"
+                className="rounded-xl p-3 text-xs font-mono break-all"
                 style={{
                   background: "oklch(0.97 0.01 260)",
-                  color: "oklch(0.18 0.03 260)",
+                  color: "oklch(0.28 0.04 260)",
                   border: "1px solid oklch(0.9 0.02 270)",
                 }}
               >
-                {alertMessage}
+                <span
+                  className="font-semibold"
+                  style={{ color: "oklch(0.52 0.24 22)" }}
+                >
+                  📍 Your location:{" "}
+                </span>
+                {alertLocationLine}
               </div>
             </DialogHeader>
 
-            {/* Share with All — only if Web Share is available */}
-            {typeof navigator !== "undefined" && navigator.share && (
-              <button
-                type="button"
-                data-ocid="sos.share_all_button"
-                onClick={() => {
-                  navigator
-                    .share({ title: "Emergency SOS", text: emergencyMessage })
-                    .catch(() => {});
-                }}
-                className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold tracking-wide transition-all active:scale-95"
-                style={{
-                  background:
-                    "radial-gradient(circle at 40% 40%, oklch(0.58 0.24 22), oklch(0.40 0.22 22))",
-                  color: "white",
-                  boxShadow: "0 4px 16px oklch(0.52 0.24 22 / 0.35)",
-                }}
-              >
-                <Share2 size={16} />
-                Share Location with All Contacts
-              </button>
-            )}
-
             {/* Per-contact send buttons */}
-            {contacts.length > 0 ? (
+            {activeContacts.length > 0 ? (
               <div className="mt-4">
-                <p
-                  className="text-xs font-semibold uppercase tracking-wide mb-2"
-                  style={{ color: "oklch(0.45 0.04 260)" }}
+                {/* Instruction banner */}
+                <div
+                  className="flex items-center gap-2 rounded-xl px-3 py-2 mb-3"
+                  style={{
+                    background: "oklch(0.38 0.2 145 / 0.1)",
+                    border: "1px solid oklch(0.38 0.2 145 / 0.25)",
+                  }}
                 >
-                  Send Alert Directly
-                </p>
-                <ScrollArea className="max-h-44">
-                  <div className="space-y-2 pr-1">
-                    {contacts.map((contact, idx) => (
-                      <div
-                        key={`${contact.name}-${idx}`}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                        style={{
-                          background: "oklch(0.97 0.01 260)",
-                          border: "1px solid oklch(0.91 0.02 270)",
-                        }}
-                      >
-                        {/* Name + relationship */}
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className="text-sm font-semibold truncate"
-                            style={{ color: "oklch(0.18 0.03 260)" }}
-                          >
-                            {contact.name}
-                          </p>
-                          <Badge
-                            variant="secondary"
-                            className="mt-0.5 text-xs font-medium px-1.5 py-0 h-4"
+                  <Phone
+                    size={14}
+                    style={{ color: "oklch(0.38 0.2 145)" }}
+                    className="flex-shrink-0"
+                  />
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: "oklch(0.28 0.14 145)" }}
+                  >
+                    Tap SMS to send your location to each contact
+                  </p>
+                </div>
+                <ScrollArea className="max-h-56">
+                  <div className="space-y-3 pr-1">
+                    {activeContacts.map((contact, idx) => {
+                      const cleanPhone = contact.phone.replace(/\s/g, "");
+                      const waPhone = cleanPhone.replace(/\D/g, "");
+                      const encoded = encodeURIComponent(emergencyMessage);
+                      return (
+                        <div
+                          key={`${contact.name}-${idx}`}
+                          data-ocid={`sos.contact.item.${idx + 1}`}
+                          className="rounded-xl p-3"
+                          style={{
+                            background: "oklch(0.97 0.01 260)",
+                            border:
+                              idx === 0
+                                ? "2px solid oklch(0.38 0.2 145 / 0.5)"
+                                : "1px solid oklch(0.91 0.02 270)",
+                          }}
+                        >
+                          {/* Name + relationship row */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0"
+                              style={{
+                                background: "oklch(0.32 0.18 280 / 0.15)",
+                                color: "oklch(0.32 0.18 280)",
+                              }}
+                            >
+                              {contact.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className="text-sm font-bold truncate"
+                                style={{ color: "oklch(0.18 0.03 260)" }}
+                              >
+                                {contact.name}
+                                {idx === 0 && (
+                                  <span
+                                    className="ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                                    style={{
+                                      background: "oklch(0.38 0.2 145 / 0.15)",
+                                      color: "oklch(0.28 0.14 145)",
+                                    }}
+                                  >
+                                    SMS sent ✓
+                                  </span>
+                                )}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs font-medium px-1.5 py-0 h-4"
+                                  style={{
+                                    background: "oklch(0.32 0.18 280 / 0.1)",
+                                    color: "oklch(0.32 0.18 280)",
+                                    border: "none",
+                                  }}
+                                >
+                                  {contact.relationship}
+                                </Badge>
+                                <span
+                                  className="text-xs"
+                                  style={{ color: "oklch(0.52 0.04 260)" }}
+                                >
+                                  {cleanPhone}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* PRIMARY: Full-width SMS button */}
+                          <a
+                            data-ocid={`sos.contact_sms_button.${idx + 1}`}
+                            href={`sms:${cleanPhone}?body=${encoded}`}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl text-base font-black transition-all active:scale-[0.97] mb-2"
                             style={{
-                              background: "oklch(0.32 0.18 280 / 0.1)",
-                              color: "oklch(0.32 0.18 280)",
-                              border: "none",
+                              background:
+                                "radial-gradient(ellipse at 40% 30%, oklch(0.48 0.22 145), oklch(0.34 0.18 145))",
+                              color: "white",
+                              padding: "13px 16px",
+                              boxShadow:
+                                "0 4px 16px oklch(0.38 0.2 145 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.15)",
+                              letterSpacing: "0.03em",
                             }}
+                            aria-label={`Send SMS to ${contact.name}`}
                           >
-                            {contact.relationship}
-                          </Badge>
+                            <Phone size={18} strokeWidth={2.5} />
+                            Send SMS to {contact.name.split(" ")[0]}
+                          </a>
+
+                          {/* SECONDARY: WhatsApp — smaller, below SMS */}
+                          <a
+                            data-ocid={`sos.contact_wa_button.${idx + 1}`}
+                            href={`https://wa.me/${waPhone}?text=${encoded}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]"
+                            style={{
+                              background: "oklch(0.94 0.04 155)",
+                              color: "oklch(0.32 0.14 155)",
+                              padding: "8px 12px",
+                              border: "1px solid oklch(0.38 0.2 145 / 0.2)",
+                            }}
+                            aria-label={`Send WhatsApp to ${contact.name}`}
+                          >
+                            <MessageCircle size={13} />
+                            Also send on WhatsApp
+                          </a>
                         </div>
-
-                        {/* SMS button */}
-                        <a
-                          data-ocid={`sos.contact_sms_button.${idx + 1}`}
-                          href={`sms:${contact.phone}?body=${encodeURIComponent(emergencyMessage)}`}
-                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
-                          style={{
-                            background: "oklch(0.38 0.2 145 / 0.12)",
-                            color: "oklch(0.32 0.16 145)",
-                          }}
-                          aria-label={`Send SMS to ${contact.name}`}
-                        >
-                          <Phone size={12} />
-                          SMS
-                        </a>
-
-                        {/* WhatsApp button */}
-                        <a
-                          data-ocid={`sos.contact_wa_button.${idx + 1}`}
-                          href={`https://wa.me/${contact.phone.replace(/\D/g, "")}?text=${encodeURIComponent(emergencyMessage)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all active:scale-95"
-                          style={{
-                            background: "oklch(0.52 0.18 145 / 0.12)",
-                            color: "oklch(0.38 0.16 145)",
-                          }}
-                          aria-label={`Send WhatsApp to ${contact.name}`}
-                        >
-                          <MessageCircle size={12} />
-                          WA
-                        </a>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </div>
@@ -656,7 +660,7 @@ export function HomeScreen({
             {/* Countdown + Stop Alarm */}
             <div className="mt-4 flex items-center justify-between">
               <p className="text-xs" style={{ color: "oklch(0.52 0.04 260)" }}>
-                Auto-dismissing in{" "}
+                Auto-close in{" "}
                 <span
                   className="font-bold"
                   style={{ color: "oklch(0.52 0.24 22)" }}
