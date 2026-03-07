@@ -1,0 +1,233 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Font Faces ─────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/assets/fonts/Outfit[wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── SafeAlert Design Tokens ─────────────────────────────────────────────────
+   Palette: Deep Crimson (danger/action) + Deep Violet (brand) + Off-White (bg)
+   Concept: High-visibility safety app — bold, urgent, trustworthy
+   ─────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Backgrounds */
+    --background: 0.98 0.005 95;          /* warm near-white */
+    --foreground: 0.12 0.02 260;          /* deep charcoal violet */
+
+    /* Cards / Popovers */
+    --card: 1 0 0;
+    --card-foreground: 0.12 0.02 260;
+    --popover: 1 0 0;
+    --popover-foreground: 0.12 0.02 260;
+
+    /* Primary — Deep Violet (brand/nav) */
+    --primary: 0.32 0.18 280;
+    --primary-foreground: 0.99 0 0;
+
+    /* Secondary — Light Violet tint */
+    --secondary: 0.93 0.04 280;
+    --secondary-foreground: 0.32 0.18 280;
+
+    /* Muted */
+    --muted: 0.95 0.01 260;
+    --muted-foreground: 0.52 0.04 260;
+
+    /* Accent — Crimson Red (SOS / emergency) */
+    --accent: 0.5 0.22 22;
+    --accent-foreground: 0.99 0 0;
+
+    /* Destructive — same crimson */
+    --destructive: 0.5 0.22 22;
+    --destructive-foreground: 0.99 0 0;
+
+    /* Borders */
+    --border: 0.88 0.02 270;
+    --input: 0.88 0.02 270;
+    --ring: 0.5 0.22 22;
+
+    /* Charts */
+    --chart-1: 0.5 0.22 22;
+    --chart-2: 0.32 0.18 280;
+    --chart-3: 0.65 0.15 140;
+    --chart-4: 0.72 0.16 55;
+    --chart-5: 0.55 0.15 200;
+
+    /* Sidebar */
+    --sidebar: 0.15 0.06 270;
+    --sidebar-foreground: 0.99 0 0;
+    --sidebar-primary: 0.5 0.22 22;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.25 0.1 270;
+    --sidebar-accent-foreground: 0.99 0 0;
+    --sidebar-border: 0.28 0.08 270;
+    --sidebar-ring: 0.5 0.22 22;
+
+    /* App-specific tokens */
+    --sos-red: 0.52 0.24 22;
+    --sos-red-dark: 0.38 0.2 22;
+    --sos-red-glow: 0.65 0.2 22;
+    --safe-green: 0.62 0.19 145;
+    --brand-violet: 0.32 0.18 280;
+    --brand-violet-light: 0.55 0.15 280;
+    --nav-bg: 0.14 0.07 275;
+    --nav-active: 0.5 0.22 22;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Outfit", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-weight: 700;
+  }
+}
+
+/* ── SOS Button Pulse Animation ────────────────────────────────────────────── */
+@keyframes sos-pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  70% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes sos-pulse-ring-2 {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+@keyframes sos-press {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+@keyframes sos-active-glow {
+  0%, 100% { box-shadow: 0 0 30px 8px oklch(0.52 0.24 22 / 0.5); }
+  50% { box-shadow: 0 0 55px 20px oklch(0.52 0.24 22 / 0.7); }
+}
+
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes listening-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.7; }
+}
+
+.sos-button-ring-1 {
+  animation: sos-pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.sos-button-ring-2 {
+  animation: sos-pulse-ring-2 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) 0.4s infinite;
+}
+
+.sos-active-glow {
+  animation: sos-active-glow 1.2s ease-in-out infinite;
+}
+
+.listening-pulse {
+  animation: listening-pulse 1.4s ease-in-out infinite;
+}
+
+.status-blink {
+  animation: status-blink 1s ease-in-out infinite;
+}
+
+.slide-up {
+  animation: slide-up 0.35s ease-out forwards;
+}
+
+.fade-in {
+  animation: fade-in 0.25s ease-out forwards;
+}
+
+/* ── Mobile Layout Shell ───────────────────────────────────────────────────── */
+.app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: oklch(var(--background));
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Bottom Nav ────────────────────────────────────────────────────────────── */
+.bottom-nav {
+  background: oklch(var(--nav-bg));
+  border-top: 1px solid oklch(0.28 0.08 270);
+}
+
+/* ── Scrollable Content Area ───────────────────────────────────────────────── */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Relationship Badge Colors ─────────────────────────────────────────────── */
+.badge-parent { background: oklch(0.55 0.15 280 / 0.15); color: oklch(0.32 0.18 280); border: 1px solid oklch(0.55 0.15 280 / 0.3); }
+.badge-friend { background: oklch(0.52 0.19 145 / 0.15); color: oklch(0.35 0.15 145); border: 1px solid oklch(0.52 0.19 145 / 0.3); }
+.badge-guardian { background: oklch(0.6 0.16 55 / 0.15); color: oklch(0.42 0.14 55); border: 1px solid oklch(0.6 0.16 55 / 0.3); }
+.badge-sibling { background: oklch(0.6 0.16 200 / 0.15); color: oklch(0.38 0.14 200); border: 1px solid oklch(0.6 0.16 200 / 0.3); }
+.badge-partner { background: oklch(0.52 0.24 22 / 0.12); color: oklch(0.38 0.2 22); border: 1px solid oklch(0.52 0.24 22 / 0.3); }
