@@ -2,24 +2,17 @@ import { ContactsScreen } from "@/components/ContactsScreen";
 import { HistoryScreen } from "@/components/HistoryScreen";
 import { HomeScreen } from "@/components/HomeScreen";
 import { SettingsScreen } from "@/components/SettingsScreen";
+import { SetupScreen } from "@/components/SetupScreen";
+import { UnlockScreen } from "@/components/UnlockScreen";
 import { Toaster } from "@/components/ui/sonner";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useShakeDetection } from "@/hooks/useShakeDetection";
 import { useVoiceActivation } from "@/hooks/useVoiceActivation";
-import {
-  Clock,
-  Home,
-  Loader2,
-  LogIn,
-  LogOut,
-  Mic,
-  Settings,
-  Shield,
-  Users,
-} from "lucide-react";
+import { getLocalProfile, isProfileSetup } from "@/utils/localAuth";
+import { Clock, Home, Mic, Settings, Shield, Users } from "lucide-react";
 import { useCallback, useState } from "react";
 
 type Tab = "home" | "contacts" | "history" | "settings";
+type AuthState = "setup" | "locked" | "unlocked";
 
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "home", label: "Home", icon: <Home size={20} /> },
@@ -28,16 +21,19 @@ const NAV_ITEMS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "settings", label: "Settings", icon: <Settings size={20} /> },
 ];
 
+function getInitialAuthState(): AuthState {
+  if (!isProfileSetup()) return "setup";
+  return "locked";
+}
+
 export default function App() {
+  const [authState, setAuthState] = useState<AuthState>(getInitialAuthState);
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [shakeEnabled, setShakeEnabled] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [sosTriggerCount, setSOSTriggerCount] = useState(0);
 
-  const { login, clear, isLoggingIn, isInitializing, identity } =
-    useInternetIdentity();
-
-  const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
+  const profile = getLocalProfile();
 
   // SOS trigger — shared so shake/voice can trigger it too
   const handleSOSTrigger = useCallback(() => {
@@ -45,9 +41,35 @@ export default function App() {
     setSOSTriggerCount((c) => c + 1);
   }, []);
 
-  useShakeDetection(handleSOSTrigger, shakeEnabled);
-  const { isListening } = useVoiceActivation(handleSOSTrigger, voiceEnabled);
+  useShakeDetection(handleSOSTrigger, shakeEnabled && authState === "unlocked");
+  const { isListening } = useVoiceActivation(
+    handleSOSTrigger,
+    voiceEnabled && authState === "unlocked",
+  );
 
+  // ── Auth gates ──────────────────────────────────────────────────────────────
+  if (authState === "setup") {
+    return (
+      <>
+        <SetupScreen onComplete={() => setAuthState("unlocked")} />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
+
+  if (authState === "locked") {
+    return (
+      <>
+        <UnlockScreen
+          onUnlock={() => setAuthState("unlocked")}
+          onReset={() => setAuthState("setup")}
+        />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
+
+  // ── Main app ────────────────────────────────────────────────────────────────
   return (
     <div className="app-shell">
       {/* App Header */}
@@ -103,46 +125,28 @@ export default function App() {
             </div>
           )}
 
-          {/* Auth Button */}
-          {isInitializing ? (
-            <div className="w-8 h-8 flex items-center justify-center">
-              <Loader2 size={16} className="animate-spin text-white/60" />
-            </div>
-          ) : isLoggedIn ? (
-            <button
-              type="button"
-              onClick={clear}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+          {/* Profile pill — shows user's first name */}
+          {profile && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
               style={{
                 background: "oklch(1 0 0 / 0.08)",
-                color: "oklch(0.85 0.08 270)",
+                color: "oklch(0.88 0.06 270)",
                 border: "1px solid oklch(1 0 0 / 0.15)",
               }}
-              title="Logout"
-              aria-label="Log out"
             >
-              <LogOut size={13} />
-              Logout
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={login}
-              disabled={isLoggingIn}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-              style={{
-                background: "oklch(0.52 0.24 22)",
-                color: "white",
-              }}
-              aria-label="Log in with Internet Identity"
-            >
-              {isLoggingIn ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <LogIn size={13} />
-              )}
-              {isLoggingIn ? "Logging in…" : "Login"}
-            </button>
+              <div
+                className="w-4 h-4 rounded-full flex items-center justify-center font-black"
+                style={{
+                  background: "oklch(0.52 0.24 22)",
+                  color: "white",
+                  fontSize: 9,
+                }}
+              >
+                {profile.name.charAt(0).toUpperCase()}
+              </div>
+              {profile.name.split(" ")[0]}
+            </div>
           )}
         </div>
       </header>
@@ -186,14 +190,12 @@ export default function App() {
               aria-label={`Go to ${item.label}`}
               aria-current={isActive ? "page" : undefined}
             >
-              {/* Active indicator dot */}
               {isActive && (
                 <span
                   className="absolute top-0 inset-x-0 h-0.5 rounded-b-full"
                   style={{ background: "oklch(0.52 0.24 22)" }}
                 />
               )}
-
               <span
                 className="transition-all"
                 style={{

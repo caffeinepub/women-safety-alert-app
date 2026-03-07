@@ -25,7 +25,7 @@ import {
   Volume2,
   X,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 interface HomeScreenProps {
   shakeEnabled: boolean;
@@ -74,6 +74,17 @@ const NEARBY_PLACES = [
   },
 ];
 
+// Open SMS links for all contacts sequentially with a small delay
+function sendSMSToContacts(contacts: { phone: string }[], message: string) {
+  contacts.forEach((contact, i) => {
+    const encoded = encodeURIComponent(message);
+    const smsUrl = `sms:${contact.phone}?body=${encoded}`;
+    setTimeout(() => {
+      window.open(smsUrl, "_blank");
+    }, i * 600);
+  });
+}
+
 export function HomeScreen({
   shakeEnabled,
   voiceEnabled,
@@ -85,6 +96,8 @@ export function HomeScreen({
   const [emergencyMessage, setEmergencyMessage] = useState("");
   const [countdown, setCountdown] = useState(5);
   const [gpsActive] = useState(true);
+  const [smsSentCount, setSmsSentCount] = useState(0);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logAlert = useLogAlert();
   const { data: contacts = [] } = useEmergencyContacts();
 
@@ -116,42 +129,59 @@ export function HomeScreen({
       // Log to backend (non-blocking)
       logAlert.mutate({ latitude: lat, longitude: lon });
 
-      const link = `https://maps.google.com/?q=${lat},${lon}`;
-      const msg = `🚨 I am in danger. Please help! My location: ${link}`;
-      const displayMsg = `🚨 ALERT SENT!\n\n"I am in danger. Please help!\nMy location: ${link}"`;
+      const hasRealLocation = lat !== 0 || lon !== 0;
+      const link = hasRealLocation
+        ? `https://maps.google.com/?q=${lat},${lon}`
+        : "https://maps.google.com (location unavailable)";
+      const msg = `🚨 EMERGENCY ALERT! I am in danger. Please help me immediately!\nMy current location: ${link}`;
+      const displayMsg = hasRealLocation
+        ? `🚨 ALERT SENT!\n\n"I am in danger. Please help!\nMy location: ${link}"`
+        : `🚨 ALERT SENT!\n\n"I am in danger. Please help!\n(Location unavailable — GPS off)"`;
 
       setEmergencyMessage(msg);
       setAlertMessage(displayMsg);
       setSOSStatus("success");
       setAlertOpen(true);
 
-      // Auto-trigger Web Share API immediately if supported
+      // AUTO-SEND SMS to all contacts immediately
+      if (contacts.length > 0) {
+        setSmsSentCount(contacts.length);
+        sendSMSToContacts(contacts, msg);
+      }
+
+      // Also try Web Share API as fallback / additional channel
       if (navigator.share) {
-        navigator.share({ title: "Emergency SOS", text: msg }).catch(() => {});
+        navigator
+          .share({ title: "Emergency SOS Alert", text: msg })
+          .catch(() => {});
       }
 
       // Countdown to auto-dismiss
       let count = 5;
       setCountdown(count);
-      const interval = setInterval(() => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      countdownRef.current = setInterval(() => {
         count -= 1;
         setCountdown(count);
         if (count <= 0) {
-          clearInterval(interval);
+          if (countdownRef.current) clearInterval(countdownRef.current);
           setAlertOpen(false);
           setSOSStatus("idle");
+          setSmsSentCount(0);
         }
       }, 1000);
     } catch {
       setSOSStatus("error");
       setTimeout(() => setSOSStatus("idle"), 2000);
     }
-  }, [sosStatus, logAlert]);
+  }, [sosStatus, logAlert, contacts]);
 
   const dismissAlert = () => {
     stopAlarm();
+    if (countdownRef.current) clearInterval(countdownRef.current);
     setAlertOpen(false);
     setSOSStatus("idle");
+    setSmsSentCount(0);
   };
 
   const isActive = sosStatus === "success";
@@ -253,7 +283,9 @@ export function HomeScreen({
                   className="text-xs font-semibold tracking-widest uppercase"
                   style={{ color: "oklch(1 0 0 / 0.75)" }}
                 >
-                  Press & Hold
+                  {contacts.length > 0
+                    ? `Alerts ${contacts.length} contact${contacts.length > 1 ? "s" : ""}`
+                    : "Press & Hold"}
                 </span>
               </div>
             )}
@@ -278,7 +310,9 @@ export function HomeScreen({
             style={{ color: "oklch(0.38 0.2 145)" }}
           >
             <CheckCircle2 size={14} />
-            Alert sent! Alarm is active.
+            {smsSentCount > 0
+              ? `Alert sent to ${smsSentCount} contact${smsSentCount > 1 ? "s" : ""}! Alarm active.`
+              : "Alert sent! Alarm is active."}
           </div>
         )}
         {sosStatus === "error" && (
@@ -296,7 +330,9 @@ export function HomeScreen({
             className="text-xs text-center"
             style={{ color: "oklch(0.52 0.04 260)" }}
           >
-            Tap the button or shake your phone to send an emergency alert
+            {contacts.length > 0
+              ? `Pressing SOS will alert ${contacts.length} contact${contacts.length > 1 ? "s" : ""} via SMS`
+              : "Add contacts in the Contacts tab to send alerts"}
           </p>
         )}
       </div>
@@ -471,7 +507,9 @@ export function HomeScreen({
               ALERT SENT!
             </DialogTitle>
             <p className="text-sm mt-1" style={{ color: "oklch(1 0 0 / 0.8)" }}>
-              Emergency contacts have been notified
+              {smsSentCount > 0
+                ? `SMS opened for ${smsSentCount} contact${smsSentCount > 1 ? "s" : ""}`
+                : "Tap contacts below to notify them"}
             </p>
           </div>
 
@@ -521,7 +559,7 @@ export function HomeScreen({
                   className="text-xs font-semibold uppercase tracking-wide mb-2"
                   style={{ color: "oklch(0.45 0.04 260)" }}
                 >
-                  Notify Contacts Directly
+                  Send Alert Directly
                 </p>
                 <ScrollArea className="max-h-44">
                   <div className="space-y-2 pr-1">
@@ -609,7 +647,8 @@ export function HomeScreen({
                   className="text-xs leading-relaxed"
                   style={{ color: "oklch(0.38 0.12 55)" }}
                 >
-                  No emergency contacts saved. Add contacts to notify them.
+                  No emergency contacts saved. Go to the Contacts tab and add
+                  contacts — no login needed.
                 </p>
               </div>
             )}

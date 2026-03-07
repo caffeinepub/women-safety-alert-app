@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AlertLog, EmergencyContact, UserProfile } from "../backend.d";
+import {
+  addLocalContact,
+  getLocalContacts,
+  removeLocalContact,
+  updateLocalContact,
+} from "../utils/localContacts";
 import { useActor } from "./useActor";
 
 // ── User Profile ──────────────────────────────────────────────────────────────
@@ -30,27 +36,20 @@ export function useSaveUserProfile() {
   });
 }
 
-// ── Emergency Contacts ────────────────────────────────────────────────────────
+// ── Emergency Contacts — local only ───────────────────────────────────────────
 
 export function useEmergencyContacts() {
-  const { actor, isFetching } = useActor();
   return useQuery<EmergencyContact[]>({
     queryKey: ["emergencyContacts"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getEmergencyContacts();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getLocalContacts(),
   });
 }
 
 export function useAddEmergencyContact() {
-  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (contact: EmergencyContact) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.addEmergencyContact(contact);
+      addLocalContact(contact);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["emergencyContacts"] });
@@ -59,15 +58,13 @@ export function useAddEmergencyContact() {
 }
 
 export function useUpdateEmergencyContact() {
-  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       index,
       contact,
     }: { index: bigint; contact: EmergencyContact }) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.updateEmergencyContact(index, contact);
+      updateLocalContact(Number(index), contact);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["emergencyContacts"] });
@@ -76,12 +73,10 @@ export function useUpdateEmergencyContact() {
 }
 
 export function useRemoveEmergencyContact() {
-  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (index: bigint) => {
-      if (!actor) throw new Error("Not authenticated");
-      return actor.removeEmergencyContact(index);
+      removeLocalContact(Number(index));
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["emergencyContacts"] });
@@ -111,7 +106,7 @@ export function useLogAlert() {
       latitude,
       longitude,
     }: { latitude: number; longitude: number }) => {
-      if (!actor) throw new Error("Not authenticated");
+      if (!actor) return; // non-blocking — silently skip if not authenticated
       return actor.logAlert(latitude, longitude);
     },
     onSuccess: () => {

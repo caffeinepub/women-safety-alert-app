@@ -15,7 +15,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   useAddEmergencyContact,
   useEmergencyContacts,
@@ -106,10 +105,22 @@ export function ContactsScreen() {
     if (isEditing) {
       updateContact.mutate(
         { index: BigInt(editIndex!), contact },
-        { onSuccess: () => setSheetOpen(false) },
+        {
+          onSuccess: () => setSheetOpen(false),
+          onError: (err) =>
+            setFormError(
+              err instanceof Error ? err.message : "Failed to update contact.",
+            ),
+        },
       );
     } else {
-      addContact.mutate(contact, { onSuccess: () => setSheetOpen(false) });
+      addContact.mutate(contact, {
+        onSuccess: () => setSheetOpen(false),
+        onError: (err) =>
+          setFormError(
+            err instanceof Error ? err.message : "Failed to save contact.",
+          ),
+      });
     }
   };
 
@@ -131,7 +142,7 @@ export function ContactsScreen() {
             Emergency Contacts
           </h2>
           <p className="text-xs" style={{ color: "oklch(0.52 0.04 260)" }}>
-            {contacts.length}/{MAX_CONTACTS} contacts saved
+            {contacts.length}/{MAX_CONTACTS} contacts saved on this device
           </p>
         </div>
         <Button
@@ -169,7 +180,11 @@ export function ContactsScreen() {
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
+            <div
+              key={i}
+              className="h-20 rounded-xl animate-pulse"
+              style={{ background: "oklch(0.92 0.01 260)" }}
+            />
           ))}
         </div>
       ) : contacts.length === 0 ? (
@@ -190,12 +205,20 @@ export function ContactsScreen() {
             No contacts yet
           </h3>
           <p
-            className="text-sm max-w-xs"
+            className="text-sm max-w-xs mb-1"
             style={{ color: "oklch(0.52 0.04 260)" }}
           >
             Add trusted contacts who will receive your SOS alert.
           </p>
+          <p
+            className="text-xs max-w-xs"
+            style={{ color: "oklch(0.62 0.04 260)" }}
+          >
+            Contacts are saved on this device and used instantly when you press
+            SOS.
+          </p>
           <Button
+            data-ocid="contacts.add_first_button"
             onClick={openAdd}
             className="mt-5 rounded-full font-semibold gap-2"
             style={{ background: "oklch(0.32 0.18 280)", color: "white" }}
@@ -384,6 +407,7 @@ export function ContactsScreen() {
 
             {formError && (
               <div
+                data-ocid="contacts.form_error"
                 className="rounded-lg px-3 py-2 text-sm flex items-center gap-2"
                 style={{
                   background: "oklch(0.52 0.24 22 / 0.08)",
