@@ -1,31 +1,39 @@
 # Women Safety Alert App
 
 ## Current State
-The app uses Internet Identity (ICP cryptographic login) for authentication. There is a Login/Logout button in the header. Contacts are stored locally (localStorage) when not logged in and synced to backend on login. The app has no onboarding flow — users land directly on the home screen.
+
+A web-based women's safety app with:
+- PIN-based local authentication (first-time setup + return PIN unlock)
+- SOS button that gets GPS location and opens SMS/WhatsApp for each saved contact
+- Emergency contacts management (saved to localStorage)
+- Shake detection for auto-alert
+- Voice activation
+- Loud alarm sound
+- Helpline cards (112 Police, 101 Fire, 108 Ambulance)
+- React + TypeScript frontend, Motoko backend
+
+No PWA support currently. No web app manifest. No service worker. No installable experience on Android.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `src/utils/localAuth.ts` — utility to store/read a local profile (name, phone, PIN hash) in localStorage. PIN is stored as a simple hash (not plain text). Exposes: `getLocalProfile()`, `saveLocalProfile(name, phone, pin)`, `verifyPin(pin)`, `clearLocalProfile()`, `isProfileSetup()`.
-- `src/components/SetupScreen.tsx` — first-use onboarding screen shown when no profile exists. Fields: Full Name, Phone Number, PIN (4–6 digits), Confirm PIN. On submit: saves profile locally and marks user as authenticated for the session.
-- `src/components/UnlockScreen.tsx` — shown on return visits when profile exists but session is not unlocked. Shows the user's name, a PIN input, and an Unlock button. Wrong PIN shows an error. Option to "Reset / Start Over" (clears all local data).
-- Session state in App.tsx: `isUnlocked` (boolean, starts false, set to true after setup or PIN verify). Entire app is gated behind this.
+- `manifest.webmanifest` in `public/` with app name, icons, theme color, display mode (standalone), orientation (portrait), start URL
+- App icons: 192x192 and 512x512 (use generated PNG, also create a 192x192 resized version)
+- Service worker (`sw.js`) registered in `index.html` for offline caching of app shell
+- Meta tags in `index.html`: `theme-color`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-mobile-web-app-title`, apple touch icon link
+- "Add to Home Screen" install prompt banner in the app UI (shown when `beforeinstallprompt` fires on Android Chrome)
 
 ### Modify
-- `App.tsx` — on mount, check `isProfileSetup()`. If not set up → show SetupScreen. If set up but not unlocked → show UnlockScreen. If unlocked → show the existing app shell (header + tabs + content). Remove the Internet Identity login/logout button from the header. Replace with a small profile pill showing the user's name.
-- `ContactsScreen.tsx` — remove all Internet Identity login prompts, sync banners, and backend login checks. Contacts are always local-only now. Remove `useInternetIdentity`, `useSyncLocalContactsToBackend` dependencies. Keep add/edit/delete using local storage only.
-- `useQueries.ts` — `useEmergencyContacts`, `useAddEmergencyContact`, `useUpdateEmergencyContact`, `useRemoveEmergencyContact` should always operate on local storage only (no backend calls, no login checks).
+- `index.html`: add manifest link, meta tags, service worker registration script, apple touch icon
+- `vite.config.js`: ensure public assets are copied correctly (manifest, sw.js)
 
 ### Remove
-- Internet Identity login/logout button from the app header
-- "Saved on this device. Login to back up" banner in ContactsScreen
-- "Sync to account" banner in ContactsScreen
-- Backend sync logic from contact mutations
+- Nothing removed
 
 ## Implementation Plan
-1. Create `src/utils/localAuth.ts` with profile CRUD and PIN verification
-2. Create `src/components/SetupScreen.tsx` (name + phone + PIN + confirm PIN form)
-3. Create `src/components/UnlockScreen.tsx` (PIN entry for return visits)
-4. Update `App.tsx`: add `isUnlocked` session state, gate rendering on auth screens, replace login button with profile name pill
-5. Update `ContactsScreen.tsx`: remove II login prompts and sync banners, use local-only contact hooks
-6. Update `useQueries.ts`: make all contact mutations local-only (remove backend/login branching)
+
+1. Create `src/frontend/public/manifest.webmanifest` with full PWA metadata
+2. Create `src/frontend/public/sw.js` as a simple cache-first service worker for app shell
+3. Update `src/frontend/index.html` to link the manifest, add all meta tags, register the service worker
+4. Add an install prompt banner component in the React app that listens for `beforeinstallprompt` and shows a "Install App" button
+5. Wire the install banner into the main App layout so it appears at the top on Android Chrome

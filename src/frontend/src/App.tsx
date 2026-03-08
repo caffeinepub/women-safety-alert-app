@@ -1,6 +1,7 @@
 import { ContactsScreen } from "@/components/ContactsScreen";
 import { HistoryScreen } from "@/components/HistoryScreen";
 import { HomeScreen } from "@/components/HomeScreen";
+import { InstallBanner } from "@/components/InstallBanner";
 import { SettingsScreen } from "@/components/SettingsScreen";
 import { SetupScreen } from "@/components/SetupScreen";
 import { UnlockScreen } from "@/components/UnlockScreen";
@@ -150,6 +151,9 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {/* PWA Install Banner */}
+      <InstallBanner />
 
       {/* Main Content */}
       <main className="content-area flex-1">
