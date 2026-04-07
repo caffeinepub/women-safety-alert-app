@@ -3,9 +3,9 @@ import List "mo:core/List";
 import Principal "mo:core/Principal";
 import Time "mo:core/Time";
 import Array "mo:core/Array";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   // Type definitions
   type EmergencyContact = {
