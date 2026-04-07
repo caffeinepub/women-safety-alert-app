@@ -22,19 +22,11 @@ export interface EmergencyContact {
 }
 export type Time = bigint;
 export interface UserProfile { 'name' : string }
-export type UserRole = { 'admin' : null } |
-  { 'user' : null } |
-  { 'guest' : null };
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addEmergencyContact' : ActorMethod<[EmergencyContact], undefined>,
-  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'getAlertLogs' : ActorMethod<[], Array<AlertLog>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
-  'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getEmergencyContacts' : ActorMethod<[], Array<EmergencyContact>>,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'isCallerAdmin' : ActorMethod<[], boolean>,
   'logAlert' : ActorMethod<[number, number], undefined>,
   'removeEmergencyContact' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,

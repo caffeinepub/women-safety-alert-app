@@ -3,19 +3,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { useSaveUserProfile, useUserProfile } from "@/hooks/useQueries";
 import { playAlarm } from "@/utils/alarm";
+import { getLocalProfile, saveLocalProfile } from "@/utils/localAuth";
 import {
   Activity,
   CheckCircle2,
   ChevronRight,
-  Loader2,
   Mic,
   Shield,
   User,
   Volume2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface SettingsScreenProps {
   shakeEnabled: boolean;
@@ -36,29 +35,15 @@ export function SettingsScreen({
   onShakeToggle,
   onVoiceToggle,
 }: SettingsScreenProps) {
-  const { data: profile, isLoading: isProfileLoading } = useUserProfile();
-  const saveProfile = useSaveUserProfile();
-
-  const [name, setName] = useState("");
+  const profile = getLocalProfile();
+  const [name, setName] = useState(profile?.name ?? "");
   const [saveFeedback, setSaveFeedback] = useState<"idle" | "saved">("idle");
 
-  useEffect(() => {
-    if (profile?.name) {
-      setName(profile.name);
-    }
-  }, [profile?.name]);
-
   const handleSave = () => {
-    if (!name.trim()) return;
-    saveProfile.mutate(
-      { name: name.trim() },
-      {
-        onSuccess: () => {
-          setSaveFeedback("saved");
-          setTimeout(() => setSaveFeedback("idle"), 2000);
-        },
-      },
-    );
+    if (!name.trim() || !profile) return;
+    saveLocalProfile(name.trim(), profile.phone, "");
+    setSaveFeedback("saved");
+    setTimeout(() => setSaveFeedback("idle"), 2000);
   };
 
   const handleTestAlarm = () => {
@@ -113,9 +98,7 @@ export function SettingsScreen({
             >
               Display Name
             </Label>
-            {isProfileLoading ? (
-              <div className="h-11 rounded-xl bg-muted animate-pulse" />
-            ) : (
+            {
               <Input
                 id="user-name"
                 data-ocid="settings.name_input"
@@ -125,7 +108,7 @@ export function SettingsScreen({
                 className="h-11 rounded-xl text-sm"
                 autoComplete="name"
               />
-            )}
+            }
           </div>
         </div>
 
@@ -135,7 +118,7 @@ export function SettingsScreen({
           <Button
             data-ocid="settings.save_button"
             onClick={handleSave}
-            disabled={saveProfile.isPending || !name.trim()}
+            disabled={!name.trim()}
             size="sm"
             className="w-full h-10 rounded-xl font-semibold text-sm"
             style={{
@@ -146,12 +129,7 @@ export function SettingsScreen({
               color: "white",
             }}
           >
-            {saveProfile.isPending ? (
-              <>
-                <Loader2 size={14} className="animate-spin mr-2" />
-                Saving…
-              </>
-            ) : saveFeedback === "saved" ? (
+            {saveFeedback === "saved" ? (
               <>
                 <CheckCircle2 size={14} className="mr-2" />
                 Saved!

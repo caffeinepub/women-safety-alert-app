@@ -100,7 +100,7 @@ export default function App() {
                 className="text-xs font-medium"
                 style={{ color: "oklch(0.7 0.1 270)" }}
               >
-                Women Safety App
+                Women Safety
               </span>
             </div>
           </div>

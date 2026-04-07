@@ -85,7 +85,7 @@ export function UnlockScreen({ onUnlock, onReset }: UnlockScreenProps) {
           SafeAlert
         </h1>
         <p className="text-sm mt-1" style={{ color: "oklch(0.65 0.08 270)" }}>
-          Women Safety App
+          Women Safety
         </p>
       </div>
 

@@ -5,7 +5,8 @@
 /* ── Font Faces ─────────────────────────────────────────────────────────────── */
 @font-face {
   font-family: "Bricolage Grotesque";
-  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2")
+    format("woff2");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -28,8 +29,8 @@
     --radius: 0.75rem;
 
     /* Backgrounds */
-    --background: 0.98 0.005 95;          /* warm near-white */
-    --foreground: 0.12 0.02 260;          /* deep charcoal violet */
+    --background: 0.98 0.005 95; /* warm near-white */
+    --foreground: 0.12 0.02 260; /* deep charcoal violet */
 
     /* Cards / Popovers */
     --card: 1 0 0;
@@ -101,7 +102,12 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: "Bricolage Grotesque", sans-serif;
     font-weight: 700;
   }
@@ -139,34 +145,67 @@
 }
 
 @keyframes sos-press {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.94); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 @keyframes sos-active-glow {
-  0%, 100% { box-shadow: 0 0 30px 8px oklch(0.52 0.24 22 / 0.5); }
-  50% { box-shadow: 0 0 55px 20px oklch(0.52 0.24 22 / 0.7); }
+  0%,
+  100% {
+    box-shadow: 0 0 30px 8px oklch(0.52 0.24 22 / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 55px 20px oklch(0.52 0.24 22 / 0.7);
+  }
 }
 
 @keyframes status-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes listening-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.15); opacity: 0.7; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
 }
 
 .sos-button-ring-1 {
@@ -174,7 +213,8 @@
 }
 
 .sos-button-ring-2 {
-  animation: sos-pulse-ring-2 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) 0.4s infinite;
+  animation: sos-pulse-ring-2 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) 0.4s
+    infinite;
 }
 
 .sos-active-glow {
@@ -228,8 +268,28 @@
 }
 
 /* ── Relationship Badge Colors ─────────────────────────────────────────────── */
-.badge-parent { background: oklch(0.55 0.15 280 / 0.15); color: oklch(0.32 0.18 280); border: 1px solid oklch(0.55 0.15 280 / 0.3); }
-.badge-friend { background: oklch(0.52 0.19 145 / 0.15); color: oklch(0.35 0.15 145); border: 1px solid oklch(0.52 0.19 145 / 0.3); }
-.badge-guardian { background: oklch(0.6 0.16 55 / 0.15); color: oklch(0.42 0.14 55); border: 1px solid oklch(0.6 0.16 55 / 0.3); }
-.badge-sibling { background: oklch(0.6 0.16 200 / 0.15); color: oklch(0.38 0.14 200); border: 1px solid oklch(0.6 0.16 200 / 0.3); }
-.badge-partner { background: oklch(0.52 0.24 22 / 0.12); color: oklch(0.38 0.2 22); border: 1px solid oklch(0.52 0.24 22 / 0.3); }
+.badge-parent {
+  background: oklch(0.55 0.15 280 / 0.15);
+  color: oklch(0.32 0.18 280);
+  border: 1px solid oklch(0.55 0.15 280 / 0.3);
+}
+.badge-friend {
+  background: oklch(0.52 0.19 145 / 0.15);
+  color: oklch(0.35 0.15 145);
+  border: 1px solid oklch(0.52 0.19 145 / 0.3);
+}
+.badge-guardian {
+  background: oklch(0.6 0.16 55 / 0.15);
+  color: oklch(0.42 0.14 55);
+  border: 1px solid oklch(0.6 0.16 55 / 0.3);
+}
+.badge-sibling {
+  background: oklch(0.6 0.16 200 / 0.15);
+  color: oklch(0.38 0.14 200);
+  border: 1px solid oklch(0.6 0.16 200 / 0.3);
+}
+.badge-partner {
+  background: oklch(0.52 0.24 22 / 0.12);
+  color: oklch(0.38 0.2 22);
+  border: 1px solid oklch(0.52 0.24 22 / 0.3);
+}

@@ -1,11 +1,9 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { useAlertLogs } from "@/hooks/useQueries";
 import { Clock, ExternalLink, MapPin, ShieldAlert } from "lucide-react";
+import { getLocalAlerts } from "../utils/localAlerts";
+import type { LocalAlert } from "../utils/localAlerts";
 
-function formatTimestamp(ts: bigint): string {
-  // Timestamp is in nanoseconds; convert to milliseconds
-  const ms = Number(ts / BigInt(1_000_000));
-  const date = new Date(ms);
+function formatTimestamp(isoString: string): string {
+  const date = new Date(isoString);
   return date.toLocaleString("en-IN", {
     year: "numeric",
     month: "short",
@@ -16,8 +14,8 @@ function formatTimestamp(ts: bigint): string {
   });
 }
 
-function formatRelativeTime(ts: bigint): string {
-  const ms = Number(ts / BigInt(1_000_000));
+function formatRelativeTime(isoString: string): string {
+  const ms = new Date(isoString).getTime();
   const now = Date.now();
   const diffMs = now - ms;
   const diffSec = Math.floor(diffMs / 1000);
@@ -32,13 +30,12 @@ function formatRelativeTime(ts: bigint): string {
 }
 
 export function HistoryScreen() {
-  const { data: logs = [], isLoading } = useAlertLogs();
+  const allAlerts = getLocalAlerts();
 
   // Sort newest first
-  const sorted = [...logs].sort((a, b) => {
-    const diff = b.timestamp - a.timestamp;
-    return diff > 0n ? 1 : diff < 0n ? -1 : 0;
-  });
+  const sorted = [...allAlerts].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
 
   return (
     <div className="flex flex-col h-full px-4 py-4">
@@ -51,18 +48,12 @@ export function HistoryScreen() {
           Alert History
         </h2>
         <p className="text-xs" style={{ color: "oklch(0.52 0.04 260)" }}>
-          {logs.length} alert{logs.length !== 1 ? "s" : ""} recorded
+          {sorted.length} alert{sorted.length !== 1 ? "s" : ""} recorded
         </p>
       </div>
 
       {/* Content */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
-          ))}
-        </div>
-      ) : sorted.length === 0 ? (
+      {sorted.length === 0 ? (
         <div
           data-ocid="history.empty_state"
           className="flex-1 flex flex-col items-center justify-center text-center py-16"
@@ -77,25 +68,25 @@ export function HistoryScreen() {
             className="text-base font-semibold mb-1"
             style={{ color: "oklch(0.25 0.05 260)" }}
           >
-            No alerts yet
+            No SOS alerts yet
           </h3>
           <p
             className="text-sm max-w-xs"
             style={{ color: "oklch(0.52 0.04 260)" }}
           >
-            Your SOS alert history will appear here. Stay safe!
+            No SOS alerts yet. Stay safe!
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map((log, i) => {
+          {sorted.map((log: LocalAlert, i: number) => {
             const ocidIndex = i + 1;
             const mapsLink = `https://maps.google.com/?q=${log.latitude},${log.longitude}`;
             const hasLocation = log.latitude !== 0 || log.longitude !== 0;
 
             return (
               <div
-                key={`${log.timestamp.toString()}-${i}`}
+                key={log.id}
                 data-ocid={`history.item.${ocidIndex}`}
                 className="rounded-xl overflow-hidden"
                 style={{

@@ -1,0 +1,68 @@
+// Version: 3.0.0
+type AlertLog__136262821 =
+  {latitude : Float; longitude : Float; timestamp : Int};
+type AlertLog__511702809 =
+  {latitude : Float; longitude : Float; timestamp : Time__900049286};
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type EmergencyContact__341999154 =
+  {name : Text; phone : Text; relationship : Text};
+type EmergencyContact__968490836 =
+  {name : Text; phone : Text; relationship : Text};
+type Int__270357528 = Int__616954475;
+type Int__616954475 = Int;
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type List__415060402<T> = List__790383201<T>;
+type List__790383201<T> =
+  {
+    var blockIndex : Nat__490723111;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__490723111
+  };
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type OldAccessControlState__841599830 =
+  {
+    var adminAssigned : Bool;
+    userRoles : Map__605269027<Principal, UserRole__717262347>
+  };
+type Time__796480547 = Int__270357528;
+type Time__900049286 = Time__796480547;
+type UserProfile__315128327 = {name : Text};
+type UserProfile__491224006 = {name : Text};
+type UserRole__717262347 = {#admin; #guest; #user};
+actor ({
+  in accessControlState : OldAccessControlState__841599830;
+  in alertLogs :
+    Map__605269027<Principal, List__415060402<AlertLog__136262821>>;
+  in emergencyContacts :
+    Map__605269027<Principal, List__415060402<EmergencyContact__341999154>>;
+  in userProfiles : Map__605269027<Principal, UserProfile__315128327>
+}, {
+  stable alertLogs :
+    {
+      var root :
+        Node__46230540<Principal, List__415060402<AlertLog__511702809>>;
+      var size : Nat__490723111
+    };
+  stable emergencyContacts :
+    {
+      var root :
+        Node__46230540<Principal,
+                        List__415060402<EmergencyContact__968490836>>;
+      var size : Nat__490723111
+    };
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    }
+}) ;

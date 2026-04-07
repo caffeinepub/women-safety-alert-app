@@ -1,0 +1,24 @@
+type UserProfile = record {name: text;};
+type Time = int;
+type EmergencyContact = 
+ record {
+   name: text;
+   phone: text;
+   relationship: text;
+ };
+type AlertLog = 
+ record {
+   latitude: float64;
+   longitude: float64;
+   timestamp: Time;
+ };
+service : {
+  addEmergencyContact: (contact: EmergencyContact) -> ();
+  getAlertLogs: () -> (vec AlertLog) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getEmergencyContacts: () -> (vec EmergencyContact) query;
+  logAlert: (latitude: float64, longitude: float64) -> ();
+  removeEmergencyContact: (index: nat) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  updateEmergencyContact: (index: nat, contact: EmergencyContact) -> ();
+}

@@ -7,8 +7,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useLogAlert } from "@/hooks/useQueries";
 import { playAlarm, stopAlarm } from "@/utils/alarm";
+import { addLocalAlert } from "@/utils/localAlerts";
 import { getLocalContacts } from "@/utils/localContacts";
 import {
   Activity,
@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import type { EmergencyContact } from "../backend.d";
+import type { EmergencyContact } from "../types";
 
 interface HomeScreenProps {
   shakeEnabled: boolean;
@@ -75,7 +75,6 @@ export function HomeScreen({
   const [gpsActive] = useState(true);
   const [activeContacts, setActiveContacts] = useState<EmergencyContact[]>([]);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const logAlert = useLogAlert();
 
   const triggerSOS = useCallback(async () => {
     if (sosStatus === "loading") return;
@@ -105,8 +104,8 @@ export function HomeScreen({
       // Play alarm
       playAlarm(30000);
 
-      // Log to backend (non-blocking)
-      logAlert.mutate({ latitude: lat, longitude: lon });
+      // Save alert to localStorage for history
+      addLocalAlert(lat, lon);
 
       const hasRealLocation = lat !== 0 || lon !== 0;
       const mapsLink = hasRealLocation
@@ -151,7 +150,7 @@ export function HomeScreen({
       setSOSStatus("error");
       setTimeout(() => setSOSStatus("idle"), 2000);
     }
-  }, [sosStatus, logAlert]);
+  }, [sosStatus]);
 
   const dismissAlert = () => {
     stopAlarm();
@@ -166,7 +165,7 @@ export function HomeScreen({
   const isActive = sosStatus === "success";
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Hero SOS Area */}
       <div
         className="flex flex-col items-center justify-center pt-6 pb-4 px-6"

@@ -1,4 +1,4 @@
-import type { EmergencyContact } from "../backend.d";
+import type { EmergencyContact } from "../types";
 
 const LOCAL_CONTACTS_KEY = "wsa_local_contacts";
 

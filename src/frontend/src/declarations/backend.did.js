@@ -13,11 +13,6 @@ export const EmergencyContact = IDL.Record({
   'name' : IDL.Text,
   'phone' : IDL.Text,
 });
-export const UserRole = IDL.Variant({
-  'admin' : IDL.Null,
-  'user' : IDL.Null,
-  'guest' : IDL.Null,
-});
 export const Time = IDL.Int;
 export const AlertLog = IDL.Record({
   'latitude' : IDL.Float64,
@@ -27,19 +22,10 @@ export const AlertLog = IDL.Record({
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 
 export const idlService = IDL.Service({
-  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addEmergencyContact' : IDL.Func([EmergencyContact], [], []),
-  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'getAlertLogs' : IDL.Func([], [IDL.Vec(AlertLog)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
-  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getEmergencyContacts' : IDL.Func([], [IDL.Vec(EmergencyContact)], ['query']),
-  'getUserProfile' : IDL.Func(
-      [IDL.Principal],
-      [IDL.Opt(UserProfile)],
-      ['query'],
-    ),
-  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'logAlert' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
   'removeEmergencyContact' : IDL.Func([IDL.Nat], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -54,11 +40,6 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'phone' : IDL.Text,
   });
-  const UserRole = IDL.Variant({
-    'admin' : IDL.Null,
-    'user' : IDL.Null,
-    'guest' : IDL.Null,
-  });
   const Time = IDL.Int;
   const AlertLog = IDL.Record({
     'latitude' : IDL.Float64,
@@ -68,23 +49,14 @@ export const idlFactory = ({ IDL }) => {
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
   
   return IDL.Service({
-    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addEmergencyContact' : IDL.Func([EmergencyContact], [], []),
-    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'getAlertLogs' : IDL.Func([], [IDL.Vec(AlertLog)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
-    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getEmergencyContacts' : IDL.Func(
         [],
         [IDL.Vec(EmergencyContact)],
         ['query'],
       ),
-    'getUserProfile' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Opt(UserProfile)],
-        ['query'],
-      ),
-    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'logAlert' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
     'removeEmergencyContact' : IDL.Func([IDL.Nat], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),

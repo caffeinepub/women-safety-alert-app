@@ -31,7 +31,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
-import type { EmergencyContact } from "../backend.d";
+import type { EmergencyContact } from "../types";
 
 const RELATIONSHIPS = ["Parent", "Friend", "Guardian", "Sibling", "Partner"];
 const MAX_CONTACTS = 5;
